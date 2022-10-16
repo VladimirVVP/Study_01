@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ValidationRule xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>IsCorrectSalary</fullName>
+    <active>true</active>
+    <description>Salary must be more then 500 and less then 10000</description>
+    <errorConditionFormula>OR(Salary__c &lt; 500, Salary__c &gt; 10000)</errorConditionFormula>
+    <errorDisplayField>Salary__c</errorDisplayField>
+    <errorMessage>Wrong Salary value (Salary must be more then 500 and less then 10000)</errorMessage>
+</ValidationRule>
