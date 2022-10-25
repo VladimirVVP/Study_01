@@ -1,29 +1,39 @@
 public with sharing class ExamTriggerHandler {
-    public static void updateParentStudent(Map<Id, Exam__c> examMap){
+    public static void updateParentStudent(Map<Id, Exam__c> newMap, Map<Id, Exam__c> oldMap){
         Map<Id, Integer> studentIdToExamsNumberMap = new Map<Id, Integer>();
         List<Student__c> studentsToUpdateList = new List<Student__c>();
 
-        //Fetch Exam__c records width needed fields by Id
+        Set<Id> examIdSet = new Set<Id>();
+        if (Trigger.isDelete) {
+            examIdSet = oldMap.keySet();
+        } else {
+            examIdSet = newMap.keySet();
+        }
+
+        //Fetch Exam__c records width needed fields by Id and Active__c = TRUE
         List<Exam__c> examList = [
-            SELECT Id, Discipline__r.Student__r.Id, Discipline__r.Student__r.Number_of_related_exams__c 
+            SELECT Id, Active__c, Discipline__r.Student__r.Id, Discipline__r.Student__r.Number_of_related_exams__c 
             FROM Exam__c 
-            WHERE Id IN : examMap.keySet()];
+            WHERE Id IN : examIdSet];
 
         // Calculate relatedNumbers and put result to the studentIdToExamsNumberMap for each Student
         for(Exam__c exam : examList){
             Id studentId = exam.Discipline__r.Student__r.Id;
             Integer relatedNumbers = (Integer)exam.Discipline__r.Student__r.Number_of_related_exams__c;
-            if (relatedNumbers == null) {
-                relatedNumbers = 0;
-            }
-            if (Trigger.isInsert || Trigger.isUndelete) {
-                relatedNumbers ++;
-            }
-            if (Trigger.isDelete) {
+            
+            // Needs only for Update check condition
+            if(exam.Active__c == true){
+                if (Trigger.isInsert || Trigger.isUndelete || Trigger.IsUpdate && oldMap.get(exam.Id).Active__c == false) {
+                    relatedNumbers ++;
+                } else if (Trigger.isDelete) {
+                    relatedNumbers --;
+                } 
+            } else if (Trigger.IsUpdate && oldMap.get(exam.Id).Active__c == true) {
                 relatedNumbers --;
             }
+
             if (relatedNumbers < 0) {
-                relatedNumbers = 0;
+                throw new MyException('Something went wrong, relatedNumbers = ' + relatedNumbers);
             }
             studentIdToExamsNumberMap.put(studentId, relatedNumbers);
         }
@@ -40,7 +50,8 @@ public with sharing class ExamTriggerHandler {
         }
 
         if(!studentsToUpdateList.isEmpty()){
-            upsert studentsToUpdateList;
+            update studentsToUpdateList;
         }
     }
+    public class MyException extends Exception {}
 }
