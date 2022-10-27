@@ -1,4 +1,4 @@
-public class DailyExamCalculationBatch implements Database.Batchable<sObject>, Database.Stateful, Schedulable {
+public class DailyExamCalculationBatch implements Database.Batchable<sObject>, Schedulable {
 
     // '0 minute, 8 hour, * day, * month, * dayweek ' - daily start at 8 o`clock
     // System.Schedule('calculate number of Exams', '0 8 * * *  ? ',new DailyExamCalculationBatch());
