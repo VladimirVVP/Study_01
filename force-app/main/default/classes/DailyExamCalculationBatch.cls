@@ -8,37 +8,36 @@ public class DailyExamCalculationBatch implements Database.Batchable<sObject>, D
         Database.executeBatch(dailyExamCalculationBatch, 200);
     }
 
-    Map<Id, Integer> studentIdToExamsNumberMap = new Map<Id, Integer>();
-    List<Student__c> studentsToUpdateList = new List<Student__c>();
-
     public Database.QueryLocator start(Database.BatchableContext bc) {
         // Fetch all Active Exam records
-        String query = 'SELECT Id, Active__c, Discipline__r.Student__r.Id, Discipline__r.Student__r.Number_of_related_exams__c FROM Exam__c WHERE Active__c = TRUE';
+        String query = 'SELECT Id, Discipline__c, Discipline__r.Student__c FROM Exam__c WHERE Active__c = TRUE';
         return Database.getQueryLocator(query);
     }
 
     public void execute(Database.BatchableContext bc, List<Exam__c> scope) {
-        // Calculate relatedNumbers and put result to the studentIdToExamsNumberMap for each Student
-        for(Exam__c exam : scope){
-            Id studentId = exam.Discipline__r.Student__r.Id;
-
-            if (studentIdToExamsNumberMap.get(studentId) == null) {
-                studentIdToExamsNumberMap.put(studentId, 1);
-            } else {
-                Integer relatedNumbers = studentIdToExamsNumberMap.get(studentId);
-                studentIdToExamsNumberMap.put(studentId, relatedNumbers++);
-            }
+        Set<Id> StudentIdSet = new Set<Id>();
+        
+        for (Exam__c exam: scope){
+            StudentIdSet.add(exam.Discipline__r.Student__c);
         }
-    }
-  
-    public void finish(Database.BatchableContext bc){
-        for(Id studentId : studentIdToExamsNumberMap.keyset()){
-            Student__c student = new Student__c(Id = studentId, Number_of_related_exams__c = studentIdToExamsNumberMap.get(studentId));
+        
+        List<Student__c> studentsToUpdateList = new List<Student__c>();
+        List<AggregateResult> groupedResults = [
+            SELECT Discipline__r.Student__c student, COUNT(Id) exams 
+            FROM Exam__c WHERE Active__c = TRUE AND Discipline__r.Student__c IN :StudentIdSet 
+            GROUP BY Discipline__r.Student__c];
+        
+        for (AggregateResult ar : groupedResults) {
+            Id studentId = (Id)ar.get('student');
+            Integer count = (Integer)ar.get('exams');
+            Student__c student = new Student__c(Id = studentId, Number_of_related_exams__c = count);
             studentsToUpdateList.add(student);
         }
 
         if(!studentsToUpdateList.isEmpty()){
             update studentsToUpdateList;
         }
-    }  
+    }
+  
+    public void finish(Database.BatchableContext bc){}  
 }
