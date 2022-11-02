@@ -11,17 +11,17 @@ global class InboundRestService {
         System.debug(req.requestBody);
         System.debug(req.requestURI);
 
-        String title = req.requestURI.substring(req.requestURI.lastindexOf('/') + 1);
-        title = title.replace('+', ' ');
-        System.debug(title);
+        //get record Id from RequestURI 
+        String recId = req.requestURI.substring(req.requestURI.lastindexOf('/') + 1);
+        System.debug(recId);
 
         RestResponse res = RestContext.response;
         try{
-            String query = 'SELECT Id FROM Post__c';
+            String query = 'SELECT Id, Id__c, UserId__c, Title__c, Body__c FROM Post__c';
 
             // Add condition to query if exist
-            if (String.isNotBlank(title) && title != 'posts'){
-                query += ' WHERE Title__c = \'' + title + '\'';
+            if (String.isNotBlank(recId) && recId != 'posts'){
+                query += ' WHERE Id__c = \'' + recId + '\'';
             }
             List<Post__c> postList = Database.query(query);
             res.statusCode = 200;
@@ -70,39 +70,89 @@ global class InboundRestService {
         }
     }
 
-    //PATCH
+    //PATCH URL: /services/apexrest/posts/
+    // REQUEST BODY: {"id" : 1000, "userId":10,"title":"Test title", "body":"This is a body"}
+    // RESPONSE BODY: {"postRec":{"attributes":{"type":"Post__c","url":"/services/data/v56.0/sobjects/Post__c/a067S000002K0JhQAK"},"Id":"a067S000002K0JhQAK","UserId__c":10,"Title__c":"Test title","Body__c":"This is a body"},"message":"Successfully Updated"}
     @HttpPatch
-    global static void updatePosts(){
+    global static void updatePost(Integer id, Integer userId, String title, String body){
         RestRequest req = RestContext.request;
-        RestResponse res = RestContext.response;
         System.debug(req.params);
         System.debug(req.requestBody);
 
-        try{
-            List<Post__c> postList = [SELECT Id FROM Post__c];
-            res.statusCode = 201;
-            res.responseBody = Blob.valueOf(JSON.serialize(postList));
-        } catch (Exception e){
-            res.statusCode = 412;
-            res.responseBody = Blob.valueOf(e.getMessage());
+        RestResponse res = RestContext.response;
+        try{    
+            Response response;
+            Post__c post = [SELECT Id, UserId__c, Title__c, Body__c FROM Post__c WHERE id__c = :id LIMIT 1];
+            if (post != null){
+                post.UserId__c = userId;
+                post.Title__c = title;
+                post.Body__c = body;
+                
+                Database.SaveResult sr = Database.update(post, false);
+                if (sr.isSuccess()) {
+                    res.statusCode = 200;
+                    response = new Response('Successfully Updated', post);
+                } else {
+                    String errorMsg = '';
+                    for (Database.Error err: sr.getErrors()) {
+                        errorMsg += err.getStatusCode() + ': ' + err.getMessage() + '; ';
+                    }
+                    res.statusCode = 400;
+                    response = new Response(errorMsg, null);
+                }
+                res.responseBody = Blob.valueOf(JSON.serialize(response));
+            }
+
+        } catch (Exception e) {
+            res.statusCode = 500;
+            res.responseBody = Blob.valueOf(JSON.serialize(new Response(e.getMessage(), null)));
         }
     }
 
-    //DELETE
+    //DELETE URL: /services/apexrest/posts/1000
+    // RESPONSE BODY: 
     @HttpDelete
-    global static void deletePosts(){
+    global static void deletePostByIdInParam(){
+        
         RestRequest req = RestContext.request;
-        RestResponse res = RestContext.response;
         System.debug(req.params);
         System.debug(req.requestBody);
+        System.debug(req.requestURI);
 
+        //get record Id from RequestURI 
+        String recId = req.requestURI.substring(req.requestURI.lastindexOf('/') + 1);
+        System.debug(recId);
+
+        RestResponse res = RestContext.response;
         try{
-            List<Post__c> postList = [SELECT Id FROM Post__c];
-            res.statusCode = 201;
-            res.responseBody = Blob.valueOf(JSON.serialize(postList));
+            Response response;
+            // Add condition to query if exist
+            if (String.isNotBlank(recId) && recId != 'posts'){
+                List<Post__c> postList = [SELECT Id FROM Post__c WHERE Id__c = : Integer.valueOf(recId)];
+                
+                List <Response> lstResponse = new List <Response> ();
+
+                if (!postList.isEmpty()){
+                    for (Database.DeleteResult dr: Database.delete(postList, false)) {
+                        String errorMsg = '';
+
+                        if (dr.isSuccess()) {
+                            res.statusCode = 204;
+                            lstResponse.add(new Response('Successfully Deleted Post with Id: ' + dr.getId(), null));
+                        } else {
+                            for (Database.Error err: dr.getErrors()) {
+                                errorMsg = err.getStatusCode() + ': ' + err.getMessage();
+                            }
+                            res.statusCode = 400;
+                            lstResponse.add(new Response(errorMsg, null));
+                        }
+                    }
+                }
+            }
+            res.responseBody = Blob.valueOf(JSON.serialize(response));
         } catch (Exception e){
-            res.statusCode = 412;
-            res.responseBody = Blob.valueOf(e.getMessage());
+            res.statusCode = 500;
+            res.responseBody = Blob.valueOf(JSON.serialize(new Response(e.getMessage(), null)));
         }
     }
 
