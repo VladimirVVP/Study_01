@@ -9,16 +9,15 @@ public class DailyExamCalculationBatch implements Database.Batchable<sObject>, S
     }
 
     public Database.QueryLocator start(Database.BatchableContext bc) {
-        // Fetch all Active Exam records
-        String query = 'SELECT Id, Discipline__c, Discipline__r.Student__c FROM Exam__c WHERE Active__c = TRUE';
+        String query = 'SELECT Student__c FROM Discipline_participation__c';
         return Database.getQueryLocator(query);
     }
 
-    public void execute(Database.BatchableContext bc, List<Exam__c> scope) {
+    public void execute(Database.BatchableContext bc, List<Discipline_participation__c> scope) {
         Set<Id> StudentIdSet = new Set<Id>();
         
-        for (Exam__c exam: scope){
-            StudentIdSet.add(exam.Discipline__r.Student__c);
+        for (Discipline_participation__c participation: scope){
+            StudentIdSet.add(participation.Student__c);
         }
         
         List<Student__c> studentsToUpdateList = new List<Student__c>();
