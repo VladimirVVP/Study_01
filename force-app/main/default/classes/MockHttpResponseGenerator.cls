@@ -1,10 +1,11 @@
+@isTest
 public class MockHttpResponseGenerator implements HttpCalloutMock {
     // Implement this interface method
     public HTTPResponse respond(HTTPRequest req) {
         // Optionally, only send a mock response for a specific endpoint
         // and method.
-        System.assertEquals('callout:Typicode/posts', req.getEndpoint());
-        System.assertEquals('GET', req.getMethod());
+        System.assertEquals('callout:Typicode/posts', req.getEndpoint(), 'Wrong callout');
+        System.assertEquals('GET', req.getMethod(), 'This is not a GET mwthod');
         
         // Create a fake response
         HttpResponse res = new HttpResponse();
