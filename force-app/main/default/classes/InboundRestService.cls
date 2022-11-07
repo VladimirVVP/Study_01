@@ -1,7 +1,7 @@
 @RestResource (urlMapping = '/posts/*')
 global class InboundRestService {
 
-    //GET URL: /services/apexrest/posts/test+title
+    //GET URL: /services/apexrest/posts/1000
     // RESPONSE BODY: [{"attributes":{"type":"Post__c","url":"/services/data/v56.0/sobjects/Post__c/a067S000002K0JhQAK"},"Id":"a067S000002K0JhQAK"}]
     @HttpGet
     global static void getPosts(){
@@ -21,7 +21,7 @@ global class InboundRestService {
 
             // Add condition to query if exist
             if (String.isNotBlank(recId) && recId != 'posts'){
-                query += ' WHERE Id__c = \'' + recId + '\'';
+                query += ' WHERE Id__c = ' + recId;
             }
             List<Post__c> postList = Database.query(query);
             res.statusCode = 200;
@@ -101,6 +101,8 @@ global class InboundRestService {
                     response = new Response(errorMsg, null);
                 }
                 res.responseBody = Blob.valueOf(JSON.serialize(response));
+            } else {
+                throw new MyException('post with current Id not found');
             }
 
         } catch (Exception e) {
@@ -165,4 +167,5 @@ global class InboundRestService {
             this.postRec = postRec;
         }
     }
+    public class MyException extends Exception {}
 }
