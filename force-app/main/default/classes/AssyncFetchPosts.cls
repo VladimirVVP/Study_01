@@ -4,7 +4,7 @@ public class AssyncFetchPosts implements Queueable, Database.AllowsCallouts {
     public void execute(QueueableContext context) {
         Http http = new Http();
         HttpRequest request = new HttpRequest();
-        request.setEndpoint('https://jsonplaceholder.typicode.com/posts');
+        request.setEndpoint('callout:Typicode/posts');
         request.setMethod('GET');
         request.setHeader('Content-Type', 'application/json;charset=UTF-8');
         HttpResponse response = http.send(request);
