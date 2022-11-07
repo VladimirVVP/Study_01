@@ -2,17 +2,12 @@ public class AssyncFetchPosts implements Queueable, Database.AllowsCallouts {
     // to run queue;
     // ID jobID = System.enqueueJob(new AssyncFetchPosts()); 
     public void execute(QueueableContext context) {
-        Http http = new Http();
-        HttpRequest request = new HttpRequest();
-        request.setEndpoint('callout:Typicode/posts');
-        request.setMethod('GET');
-        request.setHeader('Content-Type', 'application/json;charset=UTF-8');
-        HttpResponse response = http.send(request);
-        if (response.getStatusCode() == 200) {
-            createRecords(response.getBody());
-        } else {
-            System.debug('The status code returned was not expected: ' +
-                response.getStatusCode() + ' ' + response.getStatus());
+        try{
+            String endpoint = 'callout:Typicode/posts';
+            String responseBody = RestService.fetchExternalRecords(endpoint);
+            createRecords(responseBody);
+        } catch (Exception e){
+            System.debug('The status code returned was not expected: ' + e.getMessage());
         }
     }
     
